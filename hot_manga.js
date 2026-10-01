@@ -14,7 +14,7 @@ class HotManga extends ComicSource {
 
     minAppVersion = "1.6.0"
 
-    url = "https://gitee.com/biguoming/yurt-config/raw/main/hot_manga.js";
+    url = "https://raw.githubusercontent.com/yybwx/yurt-config/main/hot_manga.js";
 
     static defaultImageQuality = "1500"
 

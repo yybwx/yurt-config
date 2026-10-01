@@ -4,7 +4,7 @@ class MXS extends ComicSource {
     key = "mxs";
     version = "1.0.1";
     minAppVersion = "1.5.0";
-    url = "https://gitee.com/biguoming/yurt-config/raw/main/mxs.js";
+    url = "https://raw.githubusercontent.com/yybwx/yurt-config/main/mxs.js";
 
     // 漫画源设置项
     settings = {

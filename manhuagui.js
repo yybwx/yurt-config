@@ -8,7 +8,7 @@ class ManHuaGui extends ComicSource {
 
   minAppVersion = "1.4.0";
 
-  url = "https://gitee.com/biguoming/yurt-config/raw/main/manhuagui.js";
+  url = "https://raw.githubusercontent.com/yybwx/yurt-config/main/manhuagui.js";
 
   // 注意: www.manhuagui.com 在部分网络环境下被 DNS 污染无法直连,
   // 站点本身存活(经海外通道验证), 需在 App 网络设置中配置代理后使用

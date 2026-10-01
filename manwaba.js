@@ -13,7 +13,7 @@ class ManWaBa extends ComicSource {
   minAppVersion = "1.4.0";
 
   // update url
-  url = "https://gitee.com/biguoming/yurt-config/raw/main/manwaba.js";
+  url = "https://raw.githubusercontent.com/yybwx/yurt-config/main/manwaba.js";
 
   // 备用线路, 站点经常换域名
   static domains = ["manwaxu.cc", "www.mhtmh.org", "www.manwaba.com", "mwuu.cc"];

@@ -1000,7 +1000,7 @@ class Hitomi extends ComicSource {
   minAppVersion = "1.4.6";
 
   // update url
-  url = "https://gitee.com/biguoming/yurt-config/raw/main/hitomi.js";
+  url = "https://raw.githubusercontent.com/yybwx/yurt-config/main/hitomi.js";
 
   galleryCache = [];
   categoryResultCache = undefined;

@@ -7,7 +7,7 @@ class Picacg extends ComicSource {
 
     minAppVersion = "1.0.0"
 
-    url = "https://gitee.com/biguoming/yurt-config/raw/main/picacg.js"
+    url = "https://raw.githubusercontent.com/yybwx/yurt-config/main/picacg.js"
 
     static defaultApiUrl = "https://picaapi.picacomic.com"
 

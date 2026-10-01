@@ -9,7 +9,7 @@ class GuaziManhua extends ComicSource {
   minAppVersion = "1.4.0";
 
   // update url
-  url = "https://gitee.com/biguoming/yurt-config/raw/main/guazi.js";
+  url = "https://raw.githubusercontent.com/yybwx/yurt-config/main/guazi.js";
 
   static defaultDomain = "www.guazimanhua.com";
 

@@ -4,7 +4,7 @@ class ComicWalker extends ComicSource {
   version = "1.0.1";
   minAppVersion = "1.6.0";
   url =
-    "https://gitee.com/biguoming/yurt-config/raw/main/comic_walker.js";
+    "https://raw.githubusercontent.com/yybwx/yurt-config/main/comic_walker.js";
 
   api_key = "ytBrdQ2ZYdRQguqEusVLxQVUgakNnVht";
 

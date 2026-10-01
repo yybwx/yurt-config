@@ -7,7 +7,7 @@ Yurt 的漫画源配置仓库，维护源列表与 JavaScript 脚本。
 将漫画源列表地址设置为：
 
 ```text
-https://gitee.com/biguoming/yurt-config/raw/main/index.json
+https://raw.githubusercontent.com/yybwx/yurt-config/main/index.json
 ```
 
 列表通过 `fileName` 获取同目录的脚本；各脚本的 `url` 指向本仓库的 Raw 文件，用于后续更新。文件地址需要无需登录即可返回 JSON 或 JavaScript 内容。

@@ -5,7 +5,7 @@ class Zaimanhua extends ComicSource {
   version = "1.0.2";
   minAppVersion = "1.0.0";
   url =
-    "https://gitee.com/biguoming/yurt-config/raw/main/zaimanhua.js";
+    "https://raw.githubusercontent.com/yybwx/yurt-config/main/zaimanhua.js";
 
   // 初始化请求头
   init() {

@@ -4,7 +4,7 @@ class YKMHSource extends ComicSource {
     key = "ykmh"
     version = "1.0.0"
     minAppVersion = "1.4.0"
-    url = "https://gitee.com/biguoming/yurt-config/raw/main/ykmh.js"
+    url = "https://raw.githubusercontent.com/yybwx/yurt-config/main/ykmh.js"
 
     get baseUrl() {
         return "https://www.ykmh.net";

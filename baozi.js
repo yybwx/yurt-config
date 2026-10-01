@@ -10,7 +10,7 @@ class Baozi extends ComicSource {
   minAppVersion = "1.0.0";
 
   // 更新链接
-  url = "https://gitee.com/biguoming/yurt-config/raw/main/baozi.js";
+  url = "https://raw.githubusercontent.com/yybwx/yurt-config/main/baozi.js";
 
   settings = {
     language: {

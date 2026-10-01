@@ -12,7 +12,7 @@ class Ehentai extends ComicSource {
     minAppVersion = "1.5.3"
 
     // update url
-    url = "https://gitee.com/biguoming/yurt-config/raw/main/ehentai.js"
+    url = "https://raw.githubusercontent.com/yybwx/yurt-config/main/ehentai.js"
 
     /**
      * cached api key

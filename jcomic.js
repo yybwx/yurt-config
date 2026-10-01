@@ -130,7 +130,7 @@ class JComic extends ComicSource {
   minAppVersion = "1.4.6";
 
   url =
-    "https://gitee.com/biguoming/yurt-config/raw/main/jcomic.js";
+    "https://raw.githubusercontent.com/yybwx/yurt-config/main/jcomic.js";
 
   currentComic = null;
 

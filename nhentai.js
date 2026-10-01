@@ -12,7 +12,7 @@ class Nhentai extends ComicSource {
     minAppVersion = "1.0.0"
 
     // update url
-    url = "https://gitee.com/biguoming/yurt-config/raw/main/nhentai.js"
+    url = "https://raw.githubusercontent.com/yybwx/yurt-config/main/nhentai.js"
 
     baseUrl = "https://nhentai.net"
     apiBaseUrl = "https://nhentai.net/api/v2"

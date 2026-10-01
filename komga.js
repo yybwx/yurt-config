@@ -8,7 +8,7 @@ class Komga extends ComicSource {
 
 	minAppVersion = "1.4.0"
 
-	url = "https://gitee.com/biguoming/yurt-config/raw/main/komga.js"
+	url = "https://raw.githubusercontent.com/yybwx/yurt-config/main/komga.js"
 
 	settings = {
 		base_url: {

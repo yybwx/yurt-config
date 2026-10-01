@@ -12,7 +12,7 @@ class Wnacg extends ComicSource {
     minAppVersion = "1.0.0"
 
     // update url
-    url = "https://gitee.com/biguoming/yurt-config/raw/main/wnacg.js"
+    url = "https://raw.githubusercontent.com/yybwx/yurt-config/main/wnacg.js"
 
     // 内置兜底域名(发布页 wn01.link 公布的镜像), 墙内实测 www.wn01.shop 可直连;
     // 刷新成功后会被 refreshDomains 覆盖

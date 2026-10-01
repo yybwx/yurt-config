@@ -10,7 +10,7 @@ class MH1234 extends ComicSource {
     minAppVersion = "1.4.0"
 
     // update url
-    url = "https://gitee.com/biguoming/yurt-config/raw/main/mh1234.js"
+    url = "https://raw.githubusercontent.com/yybwx/yurt-config/main/mh1234.js"
 
     settings = {
         domains: {

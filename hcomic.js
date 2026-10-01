@@ -10,7 +10,7 @@ class HComic extends ComicSource {
     minAppVersion = "1.6.0"
 
     // Update url
-    url = "https://gitee.com/biguoming/yurt-config/raw/main/hcomic.js"
+    url = "https://raw.githubusercontent.com/yybwx/yurt-config/main/hcomic.js"
 
     baseUrl = "https://h-comic.com"
 

@@ -13,7 +13,7 @@ class CCC extends ComicSource {
     minAppVersion = "1.6.0"
 
     // update url
-    url = "https://gitee.com/biguoming/yurt-config/raw/main/ccc.js"
+    url = "https://raw.githubusercontent.com/yybwx/yurt-config/main/ccc.js"
 
     apiUrl = "https://api.creative-comic.tw"
 

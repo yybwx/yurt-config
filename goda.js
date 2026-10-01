@@ -13,7 +13,7 @@ class Goda extends ComicSource {
   minAppVersion = "1.4.0"
 
   // update url
-  url = "https://gitee.com/biguoming/yurt-config/raw/main/goda.js"
+  url = "https://raw.githubusercontent.com/yybwx/yurt-config/main/goda.js"
 
   settings = {
     domains: {

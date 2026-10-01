@@ -8,7 +8,7 @@ class CopyManga extends ComicSource {
 
     minAppVersion = "1.6.0"
 
-    url = "https://gitee.com/biguoming/yurt-config/raw/main/copy_manga.js"
+    url = "https://raw.githubusercontent.com/yybwx/yurt-config/main/copy_manga.js"
 
     async getReqID() {
         if (this.copyRegion === "0") {

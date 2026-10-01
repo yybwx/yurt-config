@@ -16,7 +16,7 @@ class JM extends ComicSource {
     static jmPkgName = "com.example.app"
 
     // update url
-    url = "https://gitee.com/biguoming/yurt-config/raw/main/jm.js"
+    url = "https://raw.githubusercontent.com/yybwx/yurt-config/main/jm.js"
 
     dailyCheckInInProgress = false
 
