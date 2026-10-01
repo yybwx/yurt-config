@@ -1,0 +1,537 @@
+/** @type {import('./_yurt_.js')} */
+class ManWaBa extends ComicSource {
+  // Note: The fields which are marked as [Optional] should be removed if not used
+
+  // name of the source
+  name = "漫蛙吧";
+
+  // unique id of the source
+  key = "manwaba";
+
+  version = "1.0.4";
+
+  minAppVersion = "1.4.0";
+
+  // update url
+  url = "https://gitee.com/biguoming/yurt-config/raw/main/manwaba.js";
+
+  // 备用线路, 站点经常换域名
+  static domains = ["manwaxu.cc", "www.mhtmh.org", "www.manwaba.com", "mwuu.cc"];
+
+  // 图片解密密钥(base.js 中的 BaseUtil.AES_KEY), init 时自动刷新
+  static defaultAESKey = "0B6666A0-BB59-1381-B746-a0E4C9AC";
+
+  // 图片(含封面)在 CDN 上为 AES-256-CBC 加密: 前16字节为IV, 其余为密文
+  // 在图片URL后追加fragment用于更换解密方案后刷新本地缓存
+  static cacheBustFragment = "#mw-dec-1";
+
+  get api() {
+    let index = parseInt(this.loadSetting("domain")) - 1;
+    let domain = ManWaBa.domains[index] || ManWaBa.domains[0];
+    return `https://${domain}/api`;
+  }
+
+  get aesKey() {
+    return this.loadData("aesKey") || ManWaBa.defaultAESKey;
+  }
+
+  init() {
+    /**
+     * Sends an HTTP request.
+     * @param {string} url - The URL to send the request to.
+     * @param {string} method - The HTTP method (e.g., GET, POST, PUT, PATCH, DELETE).
+     * @param {Object} params - The query parameters to include in the request.
+     * @param {Object} headers - The headers to include in the request.
+     * @param {string} payload - The payload to include in the request.
+     * @returns {Promise<Object>} The response from the request.
+     */
+    this.fetchJson = async (
+      url,
+      { method = "GET", params, headers, payload }
+    ) => {
+      if (params) {
+        let params_str = Object.keys(params)
+          .map((key) => `${key}=${params[key]}`)
+          .join("&");
+        url += `?${params_str}`;
+      }
+      let res = await Network.sendRequest(method, url, headers, payload);
+      if (res.status !== 200) {
+        throw `Invalid status code: ${res.status}, body: ${res.body}`;
+      }
+      let json = JSON.parse(res.body);
+      return json;
+    };
+    this.logger = {
+      error: (msg) => {
+        log("error", this.name, msg);
+      },
+      info: (msg) => {
+        log("info", this.name, msg);
+      },
+      warn: (msg) => {
+        log("warning", this.name, msg);
+      },
+    };
+    // 后台刷新图片解密密钥(站点更新 base.js 后密钥可能变化)
+    this.refreshAESKey();
+  }
+
+  async refreshAESKey() {
+    try {
+      let index = parseInt(this.loadSetting("domain")) - 1;
+      let domain = ManWaBa.domains[index] || ManWaBa.domains[0];
+      let res = await Network.sendRequest(
+        "GET",
+        `https://${domain}/static/assets/js/base.js`,
+        { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
+      );
+      let match = /AES_KEY\s*:\s*['"]([^'"]+)['"]/.exec(res.body);
+      if (match && match[1] !== this.aesKey) {
+        this.saveData("aesKey", match[1]);
+        this.logger.info(`AES key updated: ${match[1]}`);
+      }
+    } catch (e) {
+      this.logger.warn(`refreshAESKey failed: ${e}`);
+    }
+  }
+
+  // 解密已下载的图片字节: 未加密的图片直接透传
+  decryptImage = (buffer) => {
+    let bytes = new Uint8Array(buffer);
+    let isPlainImage =
+      (bytes[0] === 0xff && bytes[1] === 0xd8) || // jpeg
+      (bytes[0] === 0x89 && bytes[1] === 0x50) || // png
+      (bytes[0] === 0x47 && bytes[1] === 0x49) || // gif
+      (bytes[0] === 0x52 &&
+        bytes[1] === 0x49 &&
+        bytes[2] === 0x46 &&
+        bytes[3] === 0x46) || // riff (webp)
+      (bytes[0] === 0x42 && bytes[1] === 0x4d); // bmp
+    if (isPlainImage || bytes.length <= 16) {
+      return buffer;
+    }
+    let iv = bytes.slice(0, 16);
+    let key = new Uint8Array(Convert.encodeUtf8(this.aesKey)).slice(0, 32);
+    let decrypted = new Uint8Array(
+      Convert.decryptAesCbc(bytes.slice(16).buffer, key.buffer, iv.buffer)
+    );
+    // 去除 PKCS7 填充
+    let padLen = decrypted[decrypted.length - 1];
+    if (padLen >= 1 && padLen <= 16) {
+      decrypted = decrypted.slice(0, decrypted.length - padLen);
+    }
+    return decrypted.buffer;
+  };
+
+  // explore page list
+  explore = [
+    {
+      // title of the page.
+      // title is used to identify the page, it should be unique
+      title: this.name,
+
+      /// multiPartPage or multiPageComicList or mixed
+      type: "singlePageWithMultiPart",
+
+      /**
+       * load function
+       * @param page {number | null} - page number, null for `singlePageWithMultiPart` type
+       * @returns {{}}
+       * - for `multiPartPage` type, return [{title: string, comics: Comic[], viewMore: PageJumpTarget}]
+       * - for `multiPageComicList` type, for each page(1-based), return {comics: Comic[], maxPage: number}
+       * - for `mixed` type, use param `page` as index. for each index(0-based), return {data: [], maxPage: number?}, data is an array contains Comic[] or {title: string, comics: Comic[], viewMore: string?}
+       */
+      load: async (page) => {
+        let params = {
+          page: 1,
+          pageSize: 6,
+          type: "",
+          flag: false,
+        };
+        const url = `${this.api}/home`;
+        const data = await this.fetchJson(url, { params }).then(
+          (res) => res.data
+        );
+        let magnaList = {
+          热门: data.comicList,
+          最新完整版: data.gufengList,
+          最新更新: data.xuanhuanList,
+          热门收藏: data.xiaoyuanList,
+        };
+        function parseComic(comic) {
+          return new Comic({
+            id: comic.id.toString(),
+            title: comic.title,
+            subTitle: comic.author,
+            cover: comic.pic,
+            tags: comic.tags.split(","),
+          });
+        }
+        let result = {};
+        for (let key in magnaList) {
+          result[key] = magnaList[key].map(parseComic);
+        }
+        return result;
+      },
+    },
+  ];
+
+  // categories
+  category = {
+    /// title of the category page, used to identify the page, it should be unique
+    title: this.name,
+    parts: [
+      {
+        // title of the part
+        name: "类型",
+
+        // fixed or random or dynamic
+        // if random, need to provide `randomNumber` field, which indicates the number of comics to display at the same time
+        // if dynamic, need to provide `loader` field, which indicates the function to load comics
+        type: "fixed",
+
+        // Remove this if type is dynamic
+        categories: [
+          "全部",
+          "热血",
+          "玄幻",
+          "恋爱",
+          "冒险",
+          "古风",
+          "都市",
+          "穿越",
+          "奇幻",
+          "其他",
+          "搞笑",
+          "少男",
+          "战斗",
+          "重生",
+          "逆袭",
+          "爆笑",
+          "少年",
+          "后宫",
+          "系统",
+          "BL",
+          "韩漫",
+          "完整版",
+          "19r",
+          "台版",
+        ],
+
+        itemType: "category",
+        categoryParams: [
+          "",
+          "热血",
+          "玄幻",
+          "恋爱",
+          "冒险",
+          "古风",
+          "都市",
+          "穿越",
+          "奇幻",
+          "其他",
+          "搞笑",
+          "少男",
+          "战斗",
+          "重生",
+          "逆袭",
+          "爆笑",
+          "少年",
+          "后宫",
+          "系统",
+          "BL",
+          "韩漫",
+          "完整版",
+          "19r",
+          "台版",
+        ],
+      },
+    ],
+    // enable ranking page
+    enableRankingPage: false,
+  };
+
+  /// category comic loading related
+  categoryComics = {
+    /**
+     * load comics of a category
+     * @param category {string} - category name
+     * @param param {string?} - category param
+     * @param options {string[]} - options from optionList
+     * @param page {number} - page number
+     * @returns {Promise<{comics: Comic[], maxPage: number}>}
+     */
+    load: async (category, param, options, page) => {
+      let pathMap = {
+        "": "/cate",
+        "热血": "/cate/hotblooded",
+        "玄幻": "/cate/xuanhuan",
+        "恋爱": "/cate/romance",
+        "冒险": "/cate/adventure",
+        "古风": "/cate/historical",
+        "都市": "/cate/urban",
+        "穿越": "/cate/transmigration",
+        "奇幻": "/cate/fantasy",
+        "搞笑": "/cate/comedy",
+        "少男": "/cate/shounen",
+        "战斗": "/cate/action",
+        "重生": "/cate/rebirth",
+        "逆袭": "/cate/counterattack",
+        "爆笑": "/cate/hilarious",
+        "少年": "/cate/youth",
+        "系统": "/cate/system",
+        "BL": "/cate/bl",
+        "韩漫": "/cate/manhwa",
+        "完整版": "/cate/fullversion",
+        "19r": "/cate/19plus",
+        "台版": "/cate/taiwanver",
+      };
+      let url = this.api + pathMap[param] || "/cate";
+      let payload = JSON.stringify({
+        page: {
+          page: page,
+          pageSize: 10,
+        },
+        category: "comic",
+        sort: parseInt(options[2]),
+        comic: {
+          status: parseInt(options[0] == "2" ? -1 : options[0]),
+          day: parseInt(options[1]),
+          tag: param,
+        },
+        video: {
+          year: 0,
+          typeId: 0,
+          typeId1: 0,
+          area: "",
+          lang: "",
+          status: -1,
+          day: 0,
+        },
+        novel: {
+          status: -1,
+          day: 0,
+          sortId: 0,
+        },
+      });
+
+      let data = await this.fetchJson(url, {
+        method: "POST",
+        payload,
+      }).then((res) => res.data.list);
+
+      function parseComic(comic) {
+        return new Comic({
+          id: comic.url.split("/").pop(),
+          title: comic.title,
+          subTitle: comic.author,
+          cover: comic.pic,
+          tags: comic.tags.split(","),
+          description: comic.intro,
+          status: comic.status == 0 ? "连载中" : "已完结",
+        });
+      }
+      return {
+        comics: data.map(parseComic),
+        maxPage: 100,
+      };
+    },
+    // provide options for category comic loading
+    optionList: [
+      {
+        options: ["2-全部", "0-连载中", "1-已完结"],
+      },
+      {
+        options: [
+          "0-全部",
+          "1-周一",
+          "2-周二",
+          "3-周三",
+          "4-周四",
+          "5-周五",
+          "6-周六",
+          "7-周日",
+        ],
+      },
+      {
+        options: ["0-更新", "1-新作", "2-畅销", "3-热门", "4-收藏"],
+      },
+    ],
+  };
+
+  /// search related
+  search = {
+    /**
+     * load search result
+     * @param keyword {string}
+     * @param options {string[]} - options from optionList
+     * @param page {number}
+     * @returns {Promise<{comics: Comic[], maxPage: number}>}
+     */
+    load: async (keyword, options, page) => {
+      const pageSize = 20;
+      let url = `${this.api}/search`;
+      let params = {
+        keyword,
+        type: "mh",
+        page,
+        pageSize,
+      };
+      let data = await this.fetchJson(url, { params }).then((res) => res.data);
+      let total = data.total;
+      let comics = data.list.map((item) => {
+        return new Comic({
+          id: item.id.toString(),
+          title: item.title,
+          subTitle: item.author,
+          cover: item.cover,
+          tags: item.tags.split(","),
+          description: item.description,
+          status: item.status == 0 ? "连载中" : "已完结",
+        });
+      });
+      let maxPage = Math.ceil(total / pageSize);
+      return {
+        comics,
+        maxPage,
+      };
+    },
+  };
+
+  /// single comic related
+  comic = {
+    /**
+     * load comic info
+     * @param id {string}
+     * @returns {Promise<ComicDetails>}s
+     */
+    loadInfo: async (id) => {
+      let url = `${this.api}/comic/${id}`;
+      let data = await this.fetchJson(url, { payload: undefined }).then(
+        (res) => res.data
+      );
+      this.logger.warn(`loadInfo: ${data}`);
+      let chapterId = data.id;
+      let chapterApi = `${this.api}/comic/chapter`;
+      let params = {
+        comicId: chapterId,
+        page: 1,
+        pageSize: 1,
+      };
+      let pageRes = await this.fetchJson(chapterApi, { params });
+      let total = pageRes.pagination.total;
+
+      let chapterRes = await this.fetchJson(chapterApi, {
+        params: {
+          ...params,
+          pageSize: total,
+        },
+      });
+      let chapterList = chapterRes.data;
+      let chapters = new Map();
+      chapterList.forEach((item) => {
+        chapters.set(item.id.toString(), item.title.toString());
+      });
+
+      return new ComicDetails({
+        title: data.title.toString(),
+        subTitle: data.author.toString(),
+        cover: data.cover,
+        tags: {
+          类型: data.tags.split(","),
+          状态: data.status == 0 ? "连载中" : "已完结",
+        },
+        chapters,
+        description: data.intro,
+        updateTime: new Date(data.editTime * 1000).toLocaleDateString(),
+      });
+    },
+    /**
+     * load images of a chapter
+     * @param comicId {string}
+     * @param epId {string?}
+     * @returns {Promise<{images: string[]}>}
+     */
+    loadEp: async (comicId, epId) => {
+      let imgApi = `${this.api}/comic/image/${epId}`;
+      // 注意: 分页参数为下划线的 page_size, pageSize 不生效
+      let params = {
+        page: 1,
+        page_size: 1,
+      };
+      let pageNum = await this.fetchJson(imgApi, {
+        params,
+      }).then((res) => res.data.pagination.total);
+      let imageRes = await this.fetchJson(imgApi, {
+        params: {
+          page: 1,
+          page_size: pageNum,
+        },
+      }).then((res) => res.data.images);
+      // 追加fragment以区分加密方案变更前的旧缓存
+      let images = imageRes.map(
+        (item) => item.url + ManWaBa.cacheBustFragment
+      );
+      return {
+        images,
+      };
+    },
+    /**
+     * image loading config for comic images
+     * @param imageKey {string} - url returned by loadEp
+     * @param comicId {string}
+     * @param epId {string?}
+     * @returns {{url: string, onResponse: Function}}
+     */
+    onImageLoad: (imageKey, comicId, epId) => {
+      return {
+        url: imageKey.split("#")[0],
+        headers: {
+          "user-agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+          referer: "https://manwaxu.cc/",
+        },
+        onResponse: this.decryptImage,
+      };
+    },
+    /**
+     * image loading config for thumbnails(covers)
+     * @param url {string}
+     * @returns {{onResponse: Function}}
+     */
+    onThumbnailLoad: (url) => {
+      return {
+        headers: {
+          "user-agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+          referer: "https://manwaxu.cc/",
+        },
+        onResponse: this.decryptImage,
+      };
+    },
+  };
+
+  settings = {
+    domain: {
+      title: "线路选择",
+      type: "select",
+      options: [
+        { value: "1", text: "manwaxu.cc" },
+        { value: "2", text: "www.mhtmh.org" },
+        { value: "3", text: "www.manwaba.com" },
+        { value: "4", text: "mwuu.cc" },
+      ],
+      default: "1",
+    },
+    refreshAESKey: {
+      title: "刷新图片解密密钥",
+      type: "callback",
+      buttonText: "刷新",
+      callback: async () => {
+        await this.refreshAESKey();
+        UI.showMessage(`当前密钥: ${this.aesKey}`);
+      },
+    },
+  };
+}
