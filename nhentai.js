@@ -7,7 +7,7 @@ class Nhentai extends ComicSource {
     // unique id of the source
     key = "nhentai"
 
-    version = "1.0.8"
+    version = "1.1.0"
 
     minAppVersion = "1.0.0"
 
@@ -120,20 +120,25 @@ class Nhentai extends ComicSource {
         if (!path) {
             return path
         }
+        // the v2 API occasionally returns doubled extensions (e.g. "cover.webp.webp")
+        let collapse = (u) => u.replace(/(\.(jpg|png|webp|gif))+/g, (m) => m.match(/\.(jpg|png|webp|gif)/)[0])
         if (path.startsWith("http")) {
-            return path
+            return collapse(path)
         }
         if (path.startsWith("//")) {
-            return "https:" + path
+            return collapse("https:" + path)
         }
         if (path.startsWith("/")) {
             path = path.slice(1)
+        }
+        if (path.startsWith("avatars/")) {
+            return collapse(`https://i7.nhentai.net/${path}`)
         }
         if (path.includes("cover") || path.includes("thumb")) {
             isThumb = true
         }
 
-        return `${isThumb ? this.thumbServer : this.imageServer}/${path}`
+        return collapse(`${isThumb ? this.thumbServer : this.imageServer}/${path}`)
     }
 
     parseComicFromApi(item) {
@@ -285,30 +290,31 @@ class Nhentai extends ComicSource {
              * @returns {{}}
              */
             load: async (page) => {
-                let url = this.baseUrl
-                if(page && page !== 1) {
-                    url = `${url}?page=${page}`
+                let pageNum = page || 1
+                let data = []
+                if (pageNum === 1) {
+                    let popRes = await Network.get(`${this.apiBaseUrl}/galleries/popular`, {})
+                    if (popRes.status === 200) {
+                        let pop = JSON.parse(popRes.body)
+                        let comics = (Array.isArray(pop) ? pop : (pop.result || []))
+                            .map(e => this.parseComicFromApi(e))
+                        if (comics.length > 0) {
+                            data.push({
+                                title: "Popular",
+                                comics: comics
+                            })
+                        }
+                    }
                 }
-                let res = await Network.get(url, {})
+                let res = await Network.get(`${this.apiBaseUrl}/galleries?page=${pageNum}`, {})
                 if(res.status !== 200) {
                     throw "Invalid Status Code: " + res.status
                 }
-                let doc = new HtmlDocument(res.body)
-                let data = []
-                if (url === this.baseUrl) {
-                    data.push({
-                        title: "Popular",
-                        comics: doc.querySelectorAll("div.container.index-container.index-popular > div.gallery").map(e => this.parseComic(e))
-                    })
-                }
-                let latest = doc.querySelectorAll("div.container.index-container > div.gallery").map(e => this.parseComic(e))
-                if(url === this.baseUrl) {
-                    latest = latest.slice(data[0].comics.length)
-                }
-                data.push(latest)
+                let parsed = this.parseComicListFromApi(JSON.parse(res.body))
+                data.push(parsed.comics)
                 return {
                     data: data,
-                    maxPage: 20000,
+                    maxPage: parsed.maxPage && parsed.maxPage > 1 ? parsed.maxPage : 20000,
                 }
             }
         }
@@ -357,23 +363,52 @@ class Nhentai extends ComicSource {
          * @returns {Promise<{comics: Comic[], maxPage: number}>}
          */
         load: async (category, param, options, page) => {
-            if(param) {
-                switch (param.toLowerCase()) {
-                    case 'tags': param = 'tag'; break;
-                    case 'languages': param = 'language'; break;
-                    case 'artists': param = 'artist'; break;
-                    case 'characters': param = 'character'; break;
-                    case 'parodies': param = 'parody'; break;
-                    case 'groups': param = 'group'; break;
-                    case 'categories': param = 'category'; break;
+            let type = param
+            if (type) {
+                switch (type.toLowerCase()) {
+                    case 'tags': type = 'tag'; break;
+                    case 'languages': type = 'language'; break;
+                    case 'artists': type = 'artist'; break;
+                    case 'characters': type = 'character'; break;
+                    case 'parodies': type = 'parody'; break;
+                    case 'groups': type = 'group'; break;
+                    case 'categories': type = 'category'; break;
+                }
+            } else {
+                type = 'tag'
+            }
+            let sortRaw = (options[0] || "/").replaceAll("@", "-")
+            let sort = sortRaw.replace(/^\//, "") || "date"
+
+            // resolve the numeric tag id from the built-in tag table
+            let normalized = category.toLowerCase().replaceAll(" ", "-").replaceAll(".", "-")
+            let tagId = null
+            for (let [tid, tag] of Object.entries(Nhentai.nhentaiTags)) {
+                if (tag.toLowerCase().replaceAll(" ", "-").replaceAll(".", "-") === normalized) {
+                    tagId = tid
+                    break
                 }
             }
-            category = category.replaceAll(" ", "-")
-            let sort = (options[0] || "popular").replaceAll("@", "-")
-            category = category.replaceAll('.', '-');
-            let url = `${this.baseUrl}/${param}/${encodeURIComponent(category)}${sort}?page=${page}`
-            let res = await Network.get(url, {})
-            return this.parseComicList(res.body, 'category')
+            // language tag ids are not part of the tag table
+            let languageIds = { "chinese": "29963", "english": "12227", "japanese": "6346" }
+            if (!tagId && languageIds[normalized]) {
+                tagId = languageIds[normalized]
+            }
+
+            if (tagId) {
+                let res = await Network.get(`${this.apiBaseUrl}/galleries/tagged?tag_id=${tagId}&sort=${sort}&page=${page}`, {})
+                if (res.status === 200) {
+                    return this.parseComicListFromApi(JSON.parse(res.body))
+                }
+            }
+
+            // unknown tag: fall back to search with a tag filter
+            let query = `${type}:"${category.replaceAll('"', '')}"`
+            let searchRes = await Network.get(`${this.apiBaseUrl}/search?query=${encodeURIComponent(query)}&page=${page}&sort=${sort}`, {})
+            if (searchRes.status !== 200) {
+                throw "Invalid Status Code: " + searchRes.status
+            }
+            return this.parseComicListFromApi(JSON.parse(searchRes.body))
         },
         // provide options for category comic loading
         optionList: [
@@ -543,15 +578,6 @@ class Nhentai extends ComicSource {
                 let thumbnails = (data.pages || [])
                     .map(p => this.toAbsoluteMediaUrl(p.thumbnail, true))
                     .filter(Boolean)
-                if (thumbnails.length === 0) {
-                    let pagesRes = await Network.get(`${this.apiBaseUrl}/galleries/${id}/pages`, {})
-                    if (pagesRes.status === 200) {
-                        let pagesData = JSON.parse(pagesRes.body)
-                        thumbnails = (pagesData.pages || [])
-                            .map(p => this.toAbsoluteMediaUrl(p.thumbnail, true))
-                            .filter(Boolean)
-                    }
-                }
 
                 let related = (data.related || []).map(e => this.parseComicFromApi(e))
 
@@ -650,15 +676,20 @@ class Nhentai extends ComicSource {
         loadEp: async (comicId, epId) => {
             comicId = this.normalizeComicId(comicId)
 
-            let apiRes = await Network.get(`${this.apiBaseUrl}/galleries/${comicId}/pages`, {})
+            // gallery detail response carries every page's image path
+            let apiRes = await Network.get(`${this.apiBaseUrl}/galleries/${comicId}`, {})
             if (apiRes.status === 200) {
                 let apiData = JSON.parse(apiRes.body)
-                let images = (apiData.pages || []).map(p => this.toAbsoluteMediaUrl(p.path, false))
+                let images = (apiData.pages || [])
+                    .map(p => this.toAbsoluteMediaUrl(p.path, false))
+                    .filter(Boolean)
                 if (images.length > 0) {
                     return { images: images }
                 }
             }
 
+            // legacy HTML fallback; the redesigned site no longer embeds window._gallery,
+            // so guard the lookup instead of crashing with a TypeError
             let res = await Network.get(`${this.baseUrl}/g/${comicId}/1/`, {})
             if(res.status !== 200) {
                 throw "Invalid Status Code: " + res.status
@@ -666,8 +697,11 @@ class Nhentai extends ComicSource {
             let document = new HtmlDocument(res.body)
             let script = document.querySelectorAll("script").find((e) => {
                 return e.text.includes("window._gallery")
-            }).text
-            let json = script.split('JSON.parse("')[1].split('");')[0]
+            })
+            if (!script) {
+                throw "Failed to parse gallery pages"
+            }
+            let json = script.text.split('JSON.parse("')[1].split('");')[0]
             let decodedJsonText =
                 json.replaceAll("\\u0022", "\"").replaceAll("\\u005C", "\\");
             let data = JSON.parse(decodedJsonText)
@@ -707,14 +741,16 @@ class Nhentai extends ComicSource {
                 throw "Invalid Status Code: " + res.status
             }
             let data = JSON.parse(res.body)
-            let comments = data.map(c => {
+            // the v2 API wraps the array in {"result": [...]}; accept both shapes
+            let rawComments = Array.isArray(data) ? data : (data.result || [])
+            let comments = rawComments.map(c => {
                 return new Comment({
-                    userName: c.poster.username,
-                    avatar: this.toAbsoluteMediaUrl(c.poster.avatar_url, false),
-                    content: c.body,
+                    userName: c.poster?.username || "",
+                    avatar: this.toAbsoluteMediaUrl(c.poster?.avatar_url, false),
+                    content: c.body || "",
                     time: typeof c.post_date === "number"
                         ? new Date(c.post_date * 1000).toISOString()
-                        : String(c.post_date),
+                        : String(c.post_date || ""),
                 })
             })
             return {
