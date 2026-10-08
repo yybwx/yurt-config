@@ -201,7 +201,7 @@
         "name": "嗶哩漫畫",
         "fileName": "bilimanga.js",
         "key": "bilimanga",
-        "version": "1.0.0",
-        "description": "嗶哩漫畫(bilimanga.net), 支持分類/排行/搜索; 正文圖片為AVIF格式, 站點有Cloudflare防護, 部分功能可能需要手機網絡環境"
+        "version": "1.1.0",
+        "description": "嗶哩漫畫(bilimanga.net), 支持分類/排行/搜索; 遇到攔截時請在源設置->賬號中點擊登錄完成網頁驗證"
     }
 ]

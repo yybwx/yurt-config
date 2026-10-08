@@ -45,13 +45,49 @@ class BiliManga extends ComicSource {
     name = "嗶哩漫畫";
     key = "bilimanga";
 
-    version = "1.0.0";
+    version = "1.1.0";
     minAppVersion = "1.4.6";
 
     url =
         "https://raw.githubusercontent.com/yybwx/yurt-config/main/bilimanga.js";
 
     init() {}
+
+    // [Optional] account related
+    account = {
+        /**
+         * 通过 webview 打开站点完成 Cloudflare 验证 / 种下 Cookie。
+         * 验证通过后 Cookie 会自动保存, 与 Network 请求共用。
+         * 若无验证页, 打开即视为通过。
+         */
+        loginWithWebview: {
+            url: DEFAULT_BASE + "/",
+            /**
+             * @param url {string} - current url
+             * @param title {string} - current title
+             * @returns {boolean} - return true if login success
+             */
+            checkStatus: (url, title) => {
+                // Cloudflare 拦截页 / 质询页
+                if (
+                    /Cloudflare|Attention Required|Just a moment|請稍候|稍候/i.test(
+                        title
+                    )
+                ) {
+                    return false;
+                }
+                // 站点正常页面标题
+                return /嗶哩漫畫|漫畫/.test(title || "");
+            },
+            onLoginSuccess: () => {},
+        },
+
+        logout: () => {
+            Network.deleteCookies(DEFAULT_BASE);
+        },
+
+        registerWebsite: null,
+    }
 
     get base() {
         const domain = (this.loadSetting("domain") || "").trim();
@@ -385,7 +421,7 @@ class BiliManga extends ComicSource {
                         this.base + "/search.html"
                     );
                     if (!html || html.trim().length < 10) {
-                        throw "搜索被站点拦截, 请稍后重试或在浏览器中完成一次验证";
+                        throw "搜索被站點攔截, 請到 漫畫源設置->賬號 點擊登錄, 在網頁中完成驗證後重試";
                     }
                     const doc = new HtmlDocument(html);
                     return {
@@ -571,7 +607,7 @@ class BiliManga extends ComicSource {
 
             // 占位页判断 (站点对非手机浏览器环境返回提示页)
             if (html.indexOf("center-note") !== -1) {
-                throw "章節內容被站點攔截(返回了占位頁)。請先在手機瀏覽器打開該章節通過驗證後再試, 或反饋給維護者";
+                throw "章節內容被站點攔截(占位頁), 請到 漫畫源設置->賬號 點擊登錄完成驗證後重試; 若仍失敗請反饋給維護者";
             }
 
             const doc = new HtmlDocument(html);
