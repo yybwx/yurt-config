@@ -203,5 +203,33 @@
         "key": "bilimanga",
         "version": "1.1.0",
         "description": "嗶哩漫畫(bilimanga.net), 支持分類/排行/搜索; 遇到攔截時請在源設置->賬號中點擊登錄完成網頁驗證"
+    },
+    {
+        "name": "Lily Manga",
+        "fileName": "lilymanga.js",
+        "key": "lilymanga",
+        "version": "1.0.0",
+        "description": "Lily Manga(lilymanga.net), 百合/GL漫画站, 支持分类/搜索; 章节列表与图片按章节新旧分布在不同域名"
+    },
+    {
+        "name": "漫画160",
+        "fileName": "mh160.js",
+        "key": "mh160",
+        "version": "1.0.0",
+        "description": "漫画160(mh160mh.com), qTcms站, 支持分类/搜索; 搜索接口在部分网络环境下需先通过网页验证; 正文图片需Referer"
+    },
+    {
+        "name": "极速漫画",
+        "fileName": "kkkmh.js",
+        "key": "kkkmh",
+        "version": "1.0.0",
+        "description": "极速漫画(m.1kkk.com), 动漫屋家族镜像站, 支持分类/搜索; 个别章节可能被版权屏蔽"
+    },
+    {
+        "name": "百合会",
+        "fileName": "baihehui.js",
+        "key": "baihehui",
+        "version": "1.0.1",
+        "description": "百合会(yamibo.com)漫画源, 匿名可浏览/阅读, 搜索需要登录账号"
     }
 ]

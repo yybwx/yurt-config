@@ -8,7 +8,7 @@ class Baihehui extends ComicSource {
     // unique id of the source
     key = "baihehui"
 
-    version = "1.0.0"
+    version = "1.0.1"
 
     minAppVersion = "1.4.0"
 
@@ -435,6 +435,9 @@ explore = [
         }
     });
 
+    if (res.status === 302 || res.status === 301) {
+        throw "搜索需要登录, 请先在源设置的账号中登录百合会";
+    }
     if (res.status !== 200) {
         throw `Invalid status code: ${res.status}`;
     }
@@ -657,7 +660,8 @@ explore = [
         if (!imageElement) {
             throw `Image not found on page ${page}.`;
         }
-        let imageUrl = imageElement.attributes['src'];
+        // 页面输出的图片为 http://img.yamibo.com (会302), https 可直接访问
+        let imageUrl = imageElement.attributes['src'].replace(/^http:\/\//, "https://");
         images.push(imageUrl);
     }
 
