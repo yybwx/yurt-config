@@ -196,5 +196,12 @@
         "key": "guazi",
         "version": "1.0.1",
         "description": "瓜子漫画, 支持分类/搜索/排序; 域名失效时可在源设置中修改"
+    },
+    {
+        "name": "嗶哩漫畫",
+        "fileName": "bilimanga.js",
+        "key": "bilimanga",
+        "version": "1.0.0",
+        "description": "嗶哩漫畫(bilimanga.net), 支持分類/排行/搜索; 正文圖片為AVIF格式, 站點有Cloudflare防護, 部分功能可能需要手機網絡環境"
     }
 ]
